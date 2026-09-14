@@ -259,7 +259,9 @@ export function App() {
 				<div className="refresh-state" role="status">
 					<span className={`status-dot ${usage.error ? 'warning' : usage.loaded ? 'ready' : ''}`} />
 					{usage.loading
-						? 'Actualisation en cours…'
+						? usage.loaded
+							? `Relevé enregistré · ${timeLabel(usage.loaded.updatedAt)} · actualisation…`
+							: 'Lecture des données en cours…'
 						: usage.loaded
 							? `${usage.loaded.cached || usage.error ? 'Relevé enregistré' : 'Mis à jour'} · ${timeLabel(usage.loaded.updatedAt)}`
 							: usage.native

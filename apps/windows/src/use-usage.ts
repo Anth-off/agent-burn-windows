@@ -6,6 +6,7 @@ import type { HistoryPoint, Period, ReportEnvelope, Settings, Source } from './c
 import { normalizeReport } from './report.ts';
 import type { UsageReport } from './report.ts';
 import { reportKey } from './report-key.ts';
+import { loadReportWithCache } from './report-loading.ts';
 
 interface LoadedReport {
 	key: string;
@@ -33,6 +34,7 @@ export function useUsage(source: Source, period: Period) {
 	const [history, setHistory] = useState<HistoryPoint[]>([]);
 	const [historyError, setHistoryError] = useState<string | null>(null);
 	const [revision, setRevision] = useState(0);
+	const reports = useRef(new Map<string, LoadedReport>());
 	const force = useRef(false);
 	const key = reportKey(source, period, settings);
 
@@ -85,29 +87,23 @@ export function useUsage(source: Source, period: Period) {
 		force.current = false;
 		setLoading(true);
 		setError(null);
-		invoke<ReportEnvelope>('load_report', { source, period, force: refresh })
-			.then((envelope) => {
-				if (!active) return;
-				if (envelope.report != null) {
-					setLoaded({
-						key,
-						report: normalizeReport(envelope.report, source),
-						updatedAt: envelope.updatedAt,
-						cached: envelope.cached,
-					});
-				} else if (!envelope.error) {
-					throw new Error(
-						'Aucun rapport disponible. Lancez une session de votre agent, puis actualisez.',
-					);
-				}
-				setError(envelope.error);
-			})
-			.catch((reason: unknown) => {
-				if (active) setError(errorMessage(reason));
-			})
-			.finally(() => {
-				if (active) setLoading(false);
-			});
+		const cancelReport = loadReportWithCache({
+			cached: invoke<ReportEnvelope | null>('get_cached_report', { source, period }),
+			fresh: invoke<ReportEnvelope>('load_report', { source, period, force: refresh }),
+			currentUpdatedAt: reports.current.get(key)?.updatedAt,
+			onReport: (envelope) => {
+				const next = {
+					key,
+					report: normalizeReport(envelope.report, source),
+					updatedAt: envelope.updatedAt,
+					cached: envelope.cached,
+				} satisfies LoadedReport;
+				reports.current.set(key, next);
+				setLoaded(next);
+			},
+			onError: (reason) => setError(reason == null ? null : errorMessage(reason)),
+			onSettled: () => setLoading(false),
+		});
 		invoke<HistoryPoint[]>('get_history')
 			.then((points) => {
 				if (active) {
@@ -120,6 +116,7 @@ export function useUsage(source: Source, period: Period) {
 			});
 		return () => {
 			active = false;
+			cancelReport();
 		};
 	}, [native, ready, source, period, key, revision]);
 
@@ -136,11 +133,14 @@ export function useUsage(source: Source, period: Period) {
 		setRevision((value) => value + 1);
 	}, []);
 
+	const visible = loaded?.key === key ? loaded : reports.current.get(key);
 	return {
 		native,
 		settings,
 		settingsError,
-		loaded: loaded?.key === key ? loaded : null,
+		loaded: visible
+			? { ...visible, cached: visible.cached || loading || loaded?.key !== key }
+			: null,
 		loading,
 		error,
 		history,
