@@ -1,22 +1,14 @@
 # Agent Burn
 
-Agent Burn is a native macOS app and local CLI for understanding coding-agent usage, limits, and subscription value.
-
-The public surface is intentionally small and centered on subscription-value reporting. The CLI keeps fast local log readers and cost aggregation logic, then exposes only two commands:
-
-- `agent-burn summary` for an all-up local usage and cost overview, including an easy day-by-day breakdown.
-- `agent-burn harness <claude|codex>` for focused weekly subscription-limit detail, including spend split by input, output, and cache usage.
-
-The npm package also installs `burn` as a short alias.
+Native macOS app and local CLI for coding-agent usage, limits, and subscription value.
 
 Site: [agent-burn.melvynx.dev](https://agent-burn.melvynx.dev)
 
+`summary` is the all-up local spend view. `harness <claude|codex>` is the weekly subscription-limit view. The npm package also installs `burn` as a short alias.
+
 ## Install
 
-**Mac app:** [Get Agent Burn](https://agent-burn.melvynx.dev/download), unzip it,
-and move it to Applications when the public release is available. The first download
-is awaiting Apple notarization. macOS 14+, Apple Silicon and Intel. The app includes
-the CLI and supports signed Sparkle updates.
+**Mac app:** [Download](https://agent-burn.melvynx.dev/download), unzip, move to Applications. macOS 14+, Apple Silicon and Intel. The app bundles the CLI.
 
 **CLI:**
 
@@ -28,117 +20,36 @@ bunx agent-burn@latest harness codex --value
 
 ## Commands
 
-### macOS app
-
-Codex and Claude quotas are collected every minute by a macOS background agent,
-even after the app quits. Enable or disable this in **Settings → Background quota
-history**; allow background activity in macOS Settings if requested. The agent
-reads live provider counters independently of full spend reports and cached mode.
-Collection resumes after sleep or login. During outages, the last valid reading
-and its timestamp remain visible; missed measurements are not fabricated.
-
-The native macOS app provides a menu-bar popover with General, Codex, Claude, and Cursor
-tabs, plus a full tabbed dashboard for usage across every detected harness. The Codex
-and Claude popover tabs put remaining quota, reset time, and the forecast first;
-expand **Usage details** for spend, models, and average $ / % plus tokens / $. General
-supports daily, WTD, MTD, YTD, rolling week/month ranges, and All time. Harness tabs include
-available spend, models, daily charts, token breakdowns, and subscription details. It requires
-macOS 14 or later. Build from the repository root with Xcode command-line tools,
-the repository's Rust toolchain, and `just` available:
-
 ```bash
-just macos::run
-```
-
-The build bundles the Rust CLI in `apps/macos/dist/Agent Burn.app`. This is a
-locally signed development app. Public downloads are signed and notarized. Settings can select a
-different native CLI executable, cached pricing, and the refresh interval.
-The app follows the system appearance and uses native macOS toolbar tabs and tables.
-A flame and a remaining-quota percentage appear in the system menu bar. Choose Codex,
-Claude, or Cursor from the percentage menu or **Settings → Menu bar quota**.
-**Settings → Startup → Launch at login** registers the app with macOS Login Items
-to start at sign-in. Disable the option to unregister it.
-**Settings → Appearance → Menu bar only** hides the Dock and Command-Tab entry
-until disabled, and is remembered across launches. Codex sources include
-`~/.codex` plus the launching profile; Settings can change the comma-separated
-source folders. Complete aggregate reports are cached locally in
-`~/Library/Application Support/Agent Burn/report-cache.json`.
-Changed reports are also kept in `usage-journal.json` so daily graphs and model
-totals can be rebuilt if both `report-cache.json` and its `.bak` are unreadable.
-Quota screens count scheduled and possible resets; **Reset to date** filters spend
-from the current cycle start.
-Daily spend and token totals are retained without expiration in
-`~/Library/Application Support/Agent Burn/metrics-history.json`, with an atomic
-write and a previous-version `.bak` recovery file. The dashboard uses this archive
-for date filters and charts, even after source logs disappear. Period changes display
-saved data immediately while missing detail refreshes in the background. A harness
-tab reads only that source; General reads all sources. The selector remains usable
-during refreshes. History and recovery files are maintained automatically. All-time snapshots replace days they still report. Filtered `today`/`month`
-caches only fill missing dates, so they cannot double a day's spend. Days a
-provider stops returning stay in the archive. This is a local archive, not an
-off-device backup.
-Model and token-category tables describe available source data, not archived detail.
-Cursor defaults to its current billing cycle. Explicit `--since` / `--until`
-summary queries can retrieve older daily metrics where Cursor still supplies them.
-With live `--value --json` reports, `cursorAccount` separates included allowance,
-promotional credits, expiration dates, billing cycle and reported on-demand amounts.
-`activePercentUsed` follows promotional credits while those are the burning
-balance, then the included allowance. Cursor agent `daily` rows include
-`cursorModelsCost` and `cursorModelsTokens` for Cursor-hosted models.
-`claudeAccount` reports Claude’s live
-session, weekly, scoped-model and extra-usage meters. Missing amounts remain unknown.
-Quota readings are saved locally under
-`~/Library/Application Support/Agent Burn/quota-history.json`. The forecast uses
-average consumption during the current cycle; historical lines build as the app
-refreshes. Missing provider limits remain unavailable. Summary amounts represent
-API-equivalent usage, not subscription charges.
-
-The [macOS source and release guide](https://github.com/Melvynx/agent-burn/tree/codex/macos-product-release/apps/macos)
-documents builds, signing, notarization, and the open release process.
-
-### CLI
-
-```bash
-# Default overview. Running without a command is the same as summary.
 agent-burn
 agent-burn summary
-
-# Quick date windows.
 agent-burn summary today
-agent-burn summary yesterday
 agent-burn summary week --value
-agent-burn summary --range month --value
-
-# Focused subscription harnesses.
 agent-burn harness claude --value
 agent-burn harness codex --value
-
-# Machine-readable output.
 agent-burn summary --json
-agent-burn harness claude --json --offline
 ```
+
+macOS app: menu-bar quota for Codex, Claude, and Cursor, plus a dashboard across detected harnesses. Build locally with `just macos::run`. Details: [apps/macos](https://github.com/Melvynx/agent-burn/tree/main/apps/macos).
 
 ## Subscription Value
 
-`--value` compares local API-equivalent usage against known or supplied monthly subscription prices. Harness output also shows a trailing-30-day spend mix so you can see which token classes drive the bill.
+`--value` compares local API-equivalent usage with known or supplied monthly plan prices.
 
 ```bash
 agent-burn summary --value
-agent-burn summary week --agents codex,claude --json
 agent-burn summary --value --claude-plan max-20x --codex-plan pro
 agent-burn harness claude --value --claude-plan 200
 agent-burn harness codex --value --codex-plan plus
 ```
 
-Supported plan overrides:
+Plan overrides:
 
-- Claude: `pro`, `max-5x`, `max-20x`, or a raw monthly price.
-- Codex: `plus`, `pro`, or a raw monthly price.
-- Cursor: `pro`, `pro+`, `ultra`, or a raw monthly price.
+- Claude: `pro`, `max-5x`, `max-20x`, or a monthly price
+- Codex: `plus`, `pro`, or a monthly price
+- Cursor: `pro`, `pro+`, `ultra`, or a monthly price
 
 ## Shared Options
-
-Common options work on both commands:
 
 ```bash
 --since <YYYYMMDD>       Start date
@@ -156,9 +67,7 @@ Common options work on both commands:
 
 ## Data Sources
 
-Agent Burn reads local logs and never uploads your data. The subscription harness is currently built around Claude Code and Codex because those are the sources with useful subscription-limit signals. The summary view still aggregates detected local usage from the inherited readers so your total agent spend remains visible.
-
-Primary source locations:
+Reads local logs. Nothing is uploaded.
 
 | Source | Default location |
 | --- | --- |
@@ -166,29 +75,10 @@ Primary source locations:
 | Codex | `${CODEX_HOME:-~/.codex}` |
 | Cursor | Cursor `state.vscdb` plus the signed-in dashboard usage API |
 
-## Development
+## Acknowledgments
 
-The Rust CLI lives in the Rust workspace; the npm launcher and package metadata live in `apps/agent-burn`.
-
-Useful direct commands when the Nix dev shell is unavailable:
-
-```bash
-cargo test --manifest-path rust/Cargo.toml --workspace
-cargo build --manifest-path rust/Cargo.toml --release --bin agent-burn
-node --test apps/agent-burn/src/cli.test.ts
-```
-
-## Release
-
-After `npm login`, publish a new npm release for the current platform and the
-main wrapper package with one command:
-
-```bash
-pnpm release:npm -- --bump patch --commit --push
-```
-
-Use `--dry-run` to validate the release without publishing.
+Agent Burn started from [ccusage](https://github.com/ccusage/ccusage) by [ryoppippi](https://github.com/ryoppippi). The original local log readers, cost aggregation, and CLI report patterns are the prior work this project builds on.
 
 ## License
 
-MIT
+MIT. Copyright (c) 2025 ryoppippi and 2026 Melvynx.

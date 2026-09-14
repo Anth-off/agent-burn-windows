@@ -305,16 +305,15 @@ function LandingPage() {
 					/>
 					<h2>Small app. Open book.</h2>
 					<p>
-						Free to use. MIT licensed. Read the source, build it yourself,
+						Free to use. MIT licensed. Started from{' '}
+						<a href="https://github.com/ccusage/ccusage">ccusage</a>. Read the
+						source, build it yourself,
 						<br className="desktop-break" /> or help make agent usage a little
 						easier to understand.
 					</p>
 					<div className="hero-actions">
 						<Download />
-						<a
-							className="secondary-link"
-							href={`${githubUrl}/tree/codex/macos-product-release`}
-						>
+						<a className="secondary-link" href={githubUrl}>
 							<GithubMark size={18} />
 							Explore the source
 						</a>
@@ -359,7 +358,8 @@ function LandingPage() {
 					Agent Burn
 				</a>
 				<span>
-					Made by <a href="https://melvynx.dev">Melvyn</a>
+					Made by <a href="https://melvynx.dev">Melvyn</a>. Based on{' '}
+					<a href="https://github.com/ccusage/ccusage">ccusage</a>.
 				</span>
 				<nav aria-label="Footer">
 					<a href={githubUrl}>GitHub</a>

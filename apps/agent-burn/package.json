@@ -2,7 +2,7 @@
 	"name": "agent-burn",
 	"version": "20.0.20",
 	"description": "Compare local coding-agent usage against subscription limits and API-equivalent value",
-	"homepage": "https://github.com/Melvynx/agent-burn#readme",
+	"homepage": "https://agent-burn.melvynx.dev",
 	"bugs": {
 		"url": "https://github.com/Melvynx/agent-burn/issues"
 	},

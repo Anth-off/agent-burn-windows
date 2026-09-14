@@ -516,6 +516,14 @@
 	color: var(--dim);
 	margin-top: 22px;
 }
+.open-section > p a {
+	color: var(--ink);
+	text-decoration: underline;
+	text-underline-offset: 0.18em;
+}
+.open-section > p a:hover {
+	color: var(--accent);
+}
 .faq {
 	max-width: 850px;
 	margin: 90px auto;
