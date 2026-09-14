@@ -1,4 +1,4 @@
-use std::{fs, time::Duration};
+use std::{env, fs, path::PathBuf, time::Duration};
 
 use serde_json::{Value, json};
 
@@ -63,7 +63,9 @@ pub(crate) fn load_account(offline: bool) -> Option<Value> {
 
 fn oauth_token() -> Option<String> {
     #[cfg(target_os = "macos")]
-    if let Some(token) = keychain_token() {
+    if env::var_os("CLAUDE_CONFIG_DIR").is_none()
+        && let Some(token) = keychain_token()
+    {
         return Some(token);
     }
     file_token()
@@ -88,8 +90,26 @@ fn keychain_token() -> Option<String> {
 }
 
 fn file_token() -> Option<String> {
-    let path = home::home_dir()?.join(".claude").join(".credentials.json");
-    token_from_credentials(&fs::read_to_string(path).ok()?)
+    file_token_from(
+        env::var("CLAUDE_CONFIG_DIR").ok().as_deref(),
+        home::home_dir(),
+    )
+}
+
+fn file_token_from(config_dirs: Option<&str>, default_home: Option<PathBuf>) -> Option<String> {
+    let paths = match config_dirs {
+        Some(config_dirs) => config_dirs
+            .split(',')
+            .map(str::trim)
+            .filter(|path| !path.is_empty())
+            .map(super::paths::normalize_claude_config_path)
+            .collect::<Vec<_>>(),
+        None => vec![default_home?.join(".claude")],
+    };
+    paths.iter().find_map(|path| {
+        let credentials = fs::read_to_string(path.join(".credentials.json")).ok()?;
+        token_from_credentials(&credentials)
+    })
 }
 
 fn token_from_credentials(json: &str) -> Option<String> {
@@ -331,6 +351,54 @@ fn parse_reset_time(value: &str) -> Option<TimestampMs> {
 mod tests {
     use super::*;
     use crate::format_rfc3339_millis;
+
+    #[test]
+    fn reads_credentials_from_the_configured_claude_directory() {
+        let fixture = agent_burn_test_support::fs_fixture!({
+            "custom/.credentials.json": r#"{"claudeAiOauth":{"accessToken":"fixture-custom-token"}}"#,
+        });
+        let custom = fixture.path("custom");
+        assert_eq!(
+            file_token_from(Some(&custom.to_string_lossy()), None).as_deref(),
+            Some("fixture-custom-token")
+        );
+    }
+
+    #[test]
+    fn does_not_use_another_account_when_custom_credentials_are_missing() {
+        let fixture = agent_burn_test_support::fs_fixture!({
+            ".claude/.credentials.json": r#"{"claudeAiOauth":{"accessToken":"fixture-default-token"}}"#,
+        });
+        let missing = fixture.path("missing");
+        assert_eq!(
+            file_token_from(Some(&missing.to_string_lossy()), Some(fixture.path(""))),
+            None
+        );
+    }
+
+    #[test]
+    fn reads_custom_credentials_when_projects_directory_is_selected() {
+        let fixture = agent_burn_test_support::fs_fixture!({
+            "custom/.credentials.json": r#"{"claudeAiOauth":{"accessToken":"fixture-projects-token"}}"#,
+            "custom/projects/example/session.jsonl": "{}",
+        });
+        let projects = fixture.path("custom/projects");
+        assert_eq!(
+            file_token_from(Some(&projects.to_string_lossy()), None).as_deref(),
+            Some("fixture-projects-token")
+        );
+    }
+
+    #[test]
+    fn preserves_default_credentials_without_a_custom_directory() {
+        let fixture = agent_burn_test_support::fs_fixture!({
+            ".claude/.credentials.json": r#"{"claudeAiOauth":{"accessToken":"fixture-default-token"}}"#,
+        });
+        assert_eq!(
+            file_token_from(None, Some(fixture.path(""))).as_deref(),
+            Some("fixture-default-token")
+        );
+    }
 
     #[test]
     fn parses_usage_windows_from_response_body() {
