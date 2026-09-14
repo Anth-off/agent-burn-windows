@@ -1,6 +1,6 @@
 ---
 title: Installation
-description: Download the Mac app or run the CLI with npx, pnpm, bun, or Nix.
+description: Install the macOS app, build the Windows desktop app, or run the CLI with npx, pnpm, bun, or Nix.
 icon: Download
 ---
 
@@ -31,6 +31,43 @@ The flake exposes the renamed package and app:
 nix run github:Melvynx/agent-burn -- summary --value
 nix build github:Melvynx/agent-burn#agent-burn
 ```
+
+## Windows app
+
+The [Windows port](https://github.com/Anth-off/agent-burn-windows) targets Windows
+10 and 11 x64. It uses Tauri 2 and bundles the native Rust CLI, with a French
+dashboard for local spend, tokens, models, and available Codex, Claude, and Cursor
+quotas.
+
+Install Node.js 22.21.1, pnpm 11.1.1, Rust 1.96.0 with the MSVC toolchain,
+Visual Studio 2022 Build Tools with **Desktop development with C++** and a
+Windows SDK, and the WebView2 Runtime. Then run these commands from the repository
+root in a Windows terminal:
+
+```powershell
+pnpm install --filter @agent-burn/windows... --frozen-lockfile
+pnpm --dir apps/windows desktop:build
+```
+
+The NSIS installer is created in
+`apps/windows/src-tauri/target/release/bundle/nsis/`. The installed app requires
+WebView2 but does not need Node.js or a separate CLI installation. The current
+installer is unsigned. Successful **Windows app** workflow runs also attach
+installer artifacts and SHA-256 checksums; the workflow does not publish releases.
+See the [Windows setup guide](https://github.com/Anth-off/agent-burn-windows/tree/main/apps/windows)
+for prerequisites, validation commands, and build details.
+
+Use **Réglages** to set the theme, tray quota provider, refresh interval,
+offline mode, launch at login, and custom source folders. Closing the window
+keeps collection running in the notification area by default. Choose **Quitter**
+to stop collection. The Windows app has no separate background service or
+automatic updater.
+
+Reports and collected history are retained locally, with backup recovery and
+timestamps for saved readings. Custom absolute paths can point to WSL files
+that are accessible from Windows; WSL distributions are not detected
+automatically. Quotas depend on available provider data and are shown as
+unavailable when no reading can be obtained.
 
 ## macOS app
 

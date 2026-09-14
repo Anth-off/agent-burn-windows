@@ -1,0 +1,37 @@
+{
+	"name": "@agent-burn/windows",
+	"version": "0.1.0",
+	"private": true,
+	"description": "Agent Burn desktop application for Windows",
+	"license": "MIT",
+	"type": "module",
+	"scripts": {
+		"dev": "vite --host 127.0.0.1",
+		"build": "tsc --noEmit && vite build",
+		"preview": "vite preview --host 127.0.0.1 --port 1420 --strictPort",
+		"typecheck": "tsc --noEmit",
+		"lint": "oxlint --config .oxlintrc.json src scripts vite.config.ts",
+		"format": "oxfmt --write src scripts index.html package.json tsconfig.json vite.config.ts",
+		"format:check": "oxfmt --check src scripts index.html package.json tsconfig.json vite.config.ts",
+		"test": "node --test src/*.test.ts scripts/*.test.ts",
+		"native:prepare": "node scripts/prepare-native.mjs",
+		"tauri": "tauri",
+		"desktop:dev": "pnpm native:prepare && tauri dev",
+		"desktop:build": "tauri build"
+	},
+	"devDependencies": {
+		"@tauri-apps/api": "catalog:windows",
+		"@tauri-apps/cli": "catalog:windows",
+		"@types/node": "catalog:types",
+		"@types/react": "catalog:types",
+		"@types/react-dom": "catalog:docs",
+		"@vitejs/plugin-react": "catalog:docs",
+		"lucide-react": "catalog:docs",
+		"oxfmt": "catalog:windows",
+		"oxlint": "catalog:windows",
+		"react": "catalog:docs",
+		"react-dom": "catalog:docs",
+		"typescript": "catalog:docs",
+		"vite": "catalog:docs"
+	}
+}

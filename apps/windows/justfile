@@ -1,0 +1,52 @@
+[private]
+default:
+    @just --list
+
+# Install the Windows app's locked workspace dependencies
+install:
+    pnpm install --filter @agent-burn/windows... --frozen-lockfile
+
+# Build the Windows NSIS installer with the bundled Rust CLI
+build:
+    pnpm desktop:build
+
+# Build only the dashboard assets
+build-ui:
+    pnpm build
+
+# Build and stage the native CLI for desktop compilation
+native-prepare:
+    pnpm native:prepare
+
+# Run dashboard and packaging tests
+test-ui:
+    pnpm test
+
+# Run Windows backend tests, including its desktop integration
+test-native: native-prepare
+    cargo test --manifest-path src-tauri/Cargo.toml --locked
+
+# Run all Windows app tests
+test: test-ui test-native
+
+# Type-check the dashboard and build tooling
+typecheck:
+    pnpm typecheck
+
+# Lint the dashboard
+lint:
+    pnpm lint
+
+# Lint the Windows backend
+lint-native: native-prepare
+    cargo clippy --manifest-path src-tauri/Cargo.toml --locked --all-targets -- -D warnings
+
+# Format dashboard and Windows backend sources
+fmt:
+    pnpm format
+    cargo fmt --manifest-path src-tauri/Cargo.toml
+
+# Check formatting without changing files
+fmt-check:
+    pnpm format:check
+    cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
