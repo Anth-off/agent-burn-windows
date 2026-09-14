@@ -44,3 +44,9 @@ OAuth token. The parser accepts the modern `limits` array (`session`,
 `weekly_all`, `weekly_scoped`) and the older top-level `five_hour` /
 `seven_day` windows, plus `extra_usage` or `spend` credits. `--offline`
 omits the account object.
+
+When `CLAUDE_CONFIG_DIR` is set, live quotas use the first readable
+`.credentials.json` in those configured directories (or the parent when a
+`projects/` directory is selected). They never fall back to another account's
+default credentials. Without this override, macOS tries Keychain first and
+all platforms can read `~/.claude/.credentials.json`.

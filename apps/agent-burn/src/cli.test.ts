@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it, mock } from 'node:test';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import {
 	ensureNativeBinaryExecutable,
 	isMainModule,
@@ -111,13 +113,12 @@ void describe(resolveCliRuntime.name, () => {
 	});
 
 	void it('treats package bin symlinks as the main module entry point', () => {
+		const binaryPath = resolve('project/node_modules/.bin/agent-burn');
+		const modulePath = resolve('project/node_modules/agent-burn/src/cli.js');
 		const actual = isMainModule({
-			argvEntry: '/project/node_modules/.bin/agent-burn',
-			moduleUrl: 'file:///project/node_modules/agent-burn/src/cli.js',
-			realpathPath: (path) =>
-				path === '/project/node_modules/.bin/agent-burn'
-					? '/project/node_modules/agent-burn/src/cli.js'
-					: path,
+			argvEntry: binaryPath,
+			moduleUrl: pathToFileURL(modulePath).href,
+			realpathPath: (path) => (path === binaryPath ? modulePath : path),
 		});
 
 		assert.equal(actual, true);

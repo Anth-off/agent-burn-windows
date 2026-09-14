@@ -6,6 +6,11 @@ packages:
 catalogMode: strict
 
 catalogs:
+  windows:
+    '@tauri-apps/api': 2.11.1
+    '@tauri-apps/cli': 2.11.4
+    oxfmt: 0.67.0
+    oxlint: 1.82.0
   docs:
     '@tailwindcss/vite': 4.3.3
     '@tanstack/react-router': 1.170.17

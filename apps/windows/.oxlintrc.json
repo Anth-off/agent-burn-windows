@@ -1,0 +1,4 @@
+{
+	"options": { "typeAware": false, "typeCheck": false },
+	"ignorePatterns": ["src-tauri", "dist", "node_modules"]
+}
