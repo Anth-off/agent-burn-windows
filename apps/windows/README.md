@@ -15,6 +15,8 @@ Windows desktop port of [Agent Burn](https://github.com/Melvynx/agent-burn), bui
 
 Closing the window keeps collection running in the notification area by default. Reopen it from the tray icon. Choose **Quitter** to stop the application and collection; there is no separate Windows background service. **Réglages** lets you disable close-to-tray or enable launch at login.
 
+Saved reports appear while fresh data is collected in the background, keeping their original timestamp visible. Previously visited views also remain available when switching tabs. The first report for a new source or period still needs to read the logs and contact any enabled providers, which can take several seconds.
+
 Live quotas depend on the providers and locally available account data. Unavailable readings and refresh failures are shown explicitly. Offline mode cannot fetch fresh provider quotas. Windows does not yet have every macOS feature or an automatic updater.
 
 ## Build an installer

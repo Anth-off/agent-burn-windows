@@ -86,6 +86,20 @@ impl AppState {
         Ok(lock(&self.history)?.clone())
     }
 
+    pub(crate) fn cached_report(&self, query: &Query) -> Result<Option<ReportEnvelope>, String> {
+        let settings = self.settings()?;
+        let cached = lock(&self.cache)?.get(&query.cache_key(&settings)).cloned();
+        cached
+            .map(|report| {
+                validate_report(query, &report.report)?;
+                Ok(self.with_notice(ReportEnvelope {
+                    cached: true,
+                    ..report
+                }))
+            })
+            .transpose()
+    }
+
     pub(crate) fn record_quota(&self, sample: HistorySample) -> Result<(), String> {
         let mut history = lock(&self.history)?;
         if history
@@ -171,6 +185,18 @@ impl AppState {
         Fut: Future<Output = Result<Value, String>>,
     {
         let started = now_ms();
+        if !force {
+            let settings = self.settings()?;
+            let cached = lock(&self.cache)?.get(&query.cache_key(&settings)).cloned();
+            if let Some(report) = cached
+                && report.is_fresh(started, u64::from(settings.refresh_minutes) * 60_000)
+            {
+                return Ok(self.with_notice(ReportEnvelope {
+                    cached: true,
+                    ..report
+                }));
+            }
+        }
         let _gate = self.gate.lock().await;
         let settings = self.settings()?;
         let key = query.cache_key(&settings);
@@ -231,6 +257,67 @@ impl AppState {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[tokio::test]
+    async fn recorded_report_can_be_read_while_stale_and_another_collection_is_busy() {
+        let dir = tempfile::tempdir().unwrap();
+        let state = AppState::new(dir.path().to_owned()).unwrap();
+        let query = Query::new("month", "summary").unwrap();
+        let original = ReportEnvelope::fresh(json!({"totals":{},"agents":[],"models":[]}), 1);
+        lock(&state.cache)
+            .unwrap()
+            .insert(query.cache_key(&state.settings().unwrap()), original);
+        let _busy = state.gate.lock().await;
+
+        let cached = state.cached_report(&query).unwrap().unwrap();
+        assert!(cached.cached);
+        assert_eq!(cached.updated_at, 1);
+    }
+
+    #[test]
+    fn recorded_report_is_not_reused_after_changing_source_folders() {
+        let dir = tempfile::tempdir().unwrap();
+        let state = AppState::new(dir.path().to_owned()).unwrap();
+        let query = Query::new("month", "summary").unwrap();
+        lock(&state.cache).unwrap().insert(
+            query.cache_key(&state.settings().unwrap()),
+            ReportEnvelope::fresh(json!({"totals":{},"agents":[],"models":[]}), 1),
+        );
+        state
+            .persist_settings(Settings {
+                codex_homes: dir.path().to_string_lossy().into_owned(),
+                ..Settings::default()
+            })
+            .unwrap();
+
+        assert!(state.cached_report(&query).unwrap().is_none());
+    }
+
+    #[tokio::test]
+    async fn fresh_report_is_available_while_collection_gate_is_busy() {
+        let dir = tempfile::tempdir().unwrap();
+        let state = AppState::new(dir.path().to_owned()).unwrap();
+        let query = Query::new("month", "summary").unwrap();
+        let first = state
+            .load_with(query.clone(), false, |_| async {
+                Ok(json!({"totals":{},"agents":[],"models":[]}))
+            })
+            .await
+            .unwrap();
+        let _busy = state.gate.lock().await;
+
+        let cached = tokio::time::timeout(
+            std::time::Duration::from_millis(100),
+            state.load_with(query, false, |_| async {
+                panic!("a fresh report must not invoke the engine")
+            }),
+        )
+        .await
+        .expect("cached reports must not wait for an unrelated collection")
+        .unwrap();
+        assert!(cached.cached);
+        assert_eq!(cached.updated_at, first.updated_at);
+    }
 
     #[tokio::test]
     async fn queued_collection_uses_settings_saved_before_it_acquires_the_gate() {

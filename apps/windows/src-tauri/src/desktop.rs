@@ -80,6 +80,15 @@ async fn collect(
 }
 
 #[tauri::command]
+fn get_cached_report(
+    state: tauri::State<'_, SharedState>,
+    period: String,
+    source: String,
+) -> Result<Option<ReportEnvelope>, String> {
+    state.cached_report(&Query::new(&period, &source)?)
+}
+
+#[tauri::command]
 async fn load_report(
     app: tauri::AppHandle,
     state: tauri::State<'_, SharedState>,
@@ -210,6 +219,7 @@ pub fn run() {
                 .build(),
         )
         .invoke_handler(tauri::generate_handler![
+            get_cached_report,
             load_report,
             get_settings,
             save_settings,
